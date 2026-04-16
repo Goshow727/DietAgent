@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(where python:*)",
+      "Bash(py --version)",
+      "Bash(python.exe --version)",
+      "Bash(uv:*)",
+      "Bash(wsl --status)",
+      "Bash(wsl:*)"
+    ]
+  }
+}

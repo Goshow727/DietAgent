@@ -1,0 +1,25 @@
+[project]
+name = "dietagent-demo1"
+version = "0.1.0"
+description = "Diet Agent demo — FastAPI + LangGraph + SQLAlchemy + pgvector + Redis"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.13.3",
+    "redis>=5.1.0",
+    "pgvector>=0.3.6",
+    "pyjwt>=2.9.0",
+    "passlib[bcrypt]>=1.7.4",
+    "loguru>=0.7.2",
+    "langgraph>=0.2.40",
+    "langchain-core>=0.3.15",
+    "langchain-openai>=0.2.8",
+    "python-multipart>=0.0.12",
+    "python-dotenv>=1.0.1",
+]
