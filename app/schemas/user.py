@@ -22,9 +22,27 @@ class UserRead(BaseModel):
     email: str | None = None
     is_active: bool
     created_at: datetime
+    nickname: str | None = None
+    avatar_url: str | None = None
+    height: float | None = None
+    weight: float | None = None
+    age: int | None = None
+    gender: str | None = None
 
 
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class UserUpdate(BaseModel):
+    nickname: str | None = Field(default=None, max_length=64)
+    height: float | None = None
+    weight: float | None = None
+    age: int | None = None
+    gender: str | None = Field(default=None, pattern="^(male|female|other)$")
+
+
+class AccountStatusOut(BaseModel):
+    is_active: bool

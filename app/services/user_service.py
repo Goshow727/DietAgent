@@ -6,7 +6,7 @@ from app.core.error_code import ErrorCode
 from app.core.exceptions import BusinessException
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
-from app.schemas.user import TokenOut, UserCreate, UserLogin
+from app.schemas.user import TokenOut, UserCreate, UserLogin, UserUpdate
 
 
 async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
@@ -48,3 +48,18 @@ async def login_user(db: AsyncSession, payload: UserLogin) -> TokenOut:
         token_type="bearer",
         expires_in=settings.JWT_EXPIRE_MINUTES * 60,
     )
+
+
+async def update_user(
+    db: AsyncSession,
+    user: User,
+    payload: UserUpdate,
+    avatar_url: str | None = None,
+) -> User:
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(user, field, value)
+    if avatar_url is not None:
+        user.avatar_url = avatar_url
+    await db.commit()
+    await db.refresh(user)
+    return user

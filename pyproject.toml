@@ -22,4 +22,5 @@ dependencies = [
     "langchain-openai>=0.2.8",
     "python-multipart>=0.0.12",
     "python-dotenv>=1.0.1",
+    "oss2>=2.19.1",
 ]

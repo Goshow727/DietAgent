@@ -1,4 +1,7 @@
+from app.models.burn_log import BurnLog
+from app.models.food import Food
+from app.models.intake_log import IntakeLog
 from app.models.user import User
 from app.models.vector_doc import VectorDoc
 
-__all__ = ["User", "VectorDoc"]
+__all__ = ["User", "VectorDoc", "Food", "IntakeLog", "BurnLog"]

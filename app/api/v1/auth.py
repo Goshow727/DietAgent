@@ -16,5 +16,5 @@ async def register(payload: UserCreate, db: DbSession) -> R[UserRead]:
 
 @router.post("/login", response_model=R[TokenOut])
 async def login(payload: UserLogin, db: DbSession) -> R[TokenOut]:
-    token = await user_service.login_user(db, payload)
-    return R.ok(token)
+    result = await user_service.login_user(db, payload)
+    return R.ok(result)

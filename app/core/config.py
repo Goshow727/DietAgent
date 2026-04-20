@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     QWEN_MODEL: str = "qwen-plus"
 
+    OSS_ACCESS_KEY_ID: str = "REMOVED_OSS_KEY_ID"
+    OSS_ACCESS_KEY_SECRET: str = "REMOVED_OSS_KEY_SECRET"
+    OSS_ENDPOINT: str = "oss-cn-guangzhou.aliyuncs.com"
+    OSS_BUCKET: str = "test-zsp-oss"
+    OSS_BASE_URL: str = "https://test-zsp-oss.oss-cn-guangzhou.aliyuncs.com"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -7,7 +7,17 @@
       "Bash(python.exe --version)",
       "Bash(uv:*)",
       "Bash(wsl --status)",
-      "Bash(wsl:*)"
+      "Bash(wsl:*)",
+      "Bash(.venv/Scripts/python -c \"from app.core.security import hash_password; print\\(hash_password\\('123456'\\)\\)\")",
+      "Bash(.venv/Scripts/python -c \"import bcrypt; h = bcrypt.hashpw\\(b'123456', bcrypt.gensalt\\(\\)\\).decode\\(\\); print\\(h\\)\")",
+      "Bash(.venv/Scripts/pip show *)",
+      "Bash(.venv/Scripts/pip.exe show *)",
+      "Bash(ipconfig)",
+      "Bash(netsh advfirewall *)",
+      "Bash(cmd *)",
+      "Bash(xargs grep *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

@@ -19,6 +19,9 @@ class ErrorCode(IntEnum):
 
     AGENT_INVOKE_FAILED = 30001
 
+    FOOD_NOT_FOUND = 40001
+    LOG_NOT_FOUND = 40002
+
 
 ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.SUCCESS: "ok",
@@ -34,6 +37,8 @@ ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.TOKEN_EXPIRED: "令牌已过期",
     ErrorCode.TOKEN_INVALID: "令牌无效",
     ErrorCode.AGENT_INVOKE_FAILED: "Agent 调用失败",
+    ErrorCode.FOOD_NOT_FOUND: "食物不存在",
+    ErrorCode.LOG_NOT_FOUND: "日志不存在",
 }
 
 
