@@ -16,7 +16,7 @@ POOL_THRESHOLD = 8
 _HIGH_SALT_FOOD_KEYWORDS = ["腌", "咸", "泡菜", "酱", "火锅", "薯片", "培根"]
 
 
-async def _ready_count(user_id: int, db: AsyncSession) -> int:
+async def ready_count(user_id: int, db: AsyncSession) -> int:
     stmt = select(func.count()).select_from(RecommendationCard).where(
         RecommendationCard.user_id == user_id,
         RecommendationCard.status == "ready",
@@ -152,7 +152,7 @@ async def generate_cards(user_id: int, count: int, db: AsyncSession) -> None:
 
 
 async def ensure_pool(user_id: int, db: AsyncSession) -> None:
-    count = await _ready_count(user_id, db)
+    count = await ready_count(user_id, db)
     deficit = POOL_THRESHOLD - count
     if deficit > 0:
         await generate_cards(user_id=user_id, count=deficit, db=db)

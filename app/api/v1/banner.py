@@ -24,7 +24,7 @@ async def get_banners(
     count: int = Query(default=5, ge=1, le=10),
 ) -> R[BannerListOut]:
     cards = await banner_service.get_ready_cards(current_user.id, count, db)
-    total_ready = await banner_service._ready_count(current_user.id, db)
+    total_ready = await banner_service.ready_count(current_user.id, db)
     if total_ready < banner_service.POOL_THRESHOLD:
         background_tasks.add_task(_bg_ensure_pool, current_user.id)
     out = [CardOut.model_validate(c) for c in cards]
@@ -51,9 +51,6 @@ async def red_cut_banner(
 async def init_banner_pool(
     background_tasks: BackgroundTasks,
     current_user: CurrentUser,
-    db: DbSession,
 ) -> R[None]:
-    total_ready = await banner_service._ready_count(current_user.id, db)
-    if total_ready < banner_service.POOL_THRESHOLD:
-        background_tasks.add_task(_bg_ensure_pool, current_user.id)
+    background_tasks.add_task(_bg_ensure_pool, current_user.id)
     return R.ok(None)
