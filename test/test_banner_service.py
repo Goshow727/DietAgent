@@ -53,3 +53,35 @@ async def test_generate_card_drafts_returns_list():
     assert len(drafts) == 1
     assert drafts[0]["title"] == "高蛋白早餐"
     assert drafts[0]["category"] == "diet"
+
+
+@pytest.mark.asyncio
+async def test_ensure_pool_triggers_generation_when_below_threshold():
+    mock_db = AsyncMock()
+
+    # Simulate scalar() returning 3 (below POOL_THRESHOLD=8)
+    mock_result = MagicMock()
+    mock_result.scalar.return_value = 3
+    mock_db.execute.return_value = mock_result
+
+    with patch("app.services.banner_service.generate_cards", new_callable=AsyncMock) as mock_gen:
+        from app.services.banner_service import ensure_pool
+        await ensure_pool(user_id=1, db=mock_db)
+
+    mock_gen.assert_called_once()
+    call_kwargs = mock_gen.call_args
+    assert call_kwargs.kwargs["count"] == 5  # 8 - 3
+
+
+@pytest.mark.asyncio
+async def test_ensure_pool_skips_generation_when_full():
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar.return_value = 8
+    mock_db.execute.return_value = mock_result
+
+    with patch("app.services.banner_service.generate_cards", new_callable=AsyncMock) as mock_gen:
+        from app.services.banner_service import ensure_pool
+        await ensure_pool(user_id=1, db=mock_db)
+
+    mock_gen.assert_not_called()
