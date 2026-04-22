@@ -18,16 +18,14 @@ async def test_retrieve_returns_content_strings():
     assert result == ["每天摄入谷物250-400克"]
 
 
-@pytest.mark.asyncio
-async def test_derive_categories_high_fat():
+def test_derive_categories_high_fat():
     from app.services.rag_service import derive_categories
     cats = derive_categories(avg_fat_pct=40, avg_protein_pct=20, days_without_burn=0, has_high_salt=False)
     assert "fats" in cats
     assert "general" in cats
 
 
-@pytest.mark.asyncio
-async def test_derive_categories_low_exercise():
+def test_derive_categories_low_exercise():
     from app.services.rag_service import derive_categories
     cats = derive_categories(avg_fat_pct=20, avg_protein_pct=20, days_without_burn=5, has_high_salt=False)
     assert "exercise" in cats
