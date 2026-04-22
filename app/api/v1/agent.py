@@ -10,5 +10,5 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 
 @router.post("/chat", response_model=R[ChatOut])
 async def chat(payload: ChatIn, current_user: CurrentUser, db: DbSession) -> R[ChatOut]:
-    out = await agent_service.chat(payload, db, current_user.id)
+    out = await agent_service.chat(payload, db, current_user)
     return R.ok(out)
