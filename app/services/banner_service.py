@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from loguru import logger
 from sqlalchemy import func, select
@@ -17,7 +17,7 @@ _HIGH_SALT_FOOD_KEYWORDS = ["腌", "咸", "泡菜", "酱", "火锅", "薯片", "
 
 
 async def _ready_count(user_id: int, db: AsyncSession) -> int:
-    stmt = select(func.count()).where(
+    stmt = select(func.count()).select_from(RecommendationCard).where(
         RecommendationCard.user_id == user_id,
         RecommendationCard.status == "ready",
     )
@@ -71,7 +71,6 @@ def _derive_rag_categories(
     avg_protein_pct = (total_protein_kcal / total_kcal) * 100
 
     burn_dates = {l.logged_at.date() for l in burn_logs if l.logged_at}
-    from datetime import date
     all_days = {(date.today() - timedelta(days=i)) for i in range(7)}
     days_without_burn = len(all_days - burn_dates)
 
@@ -145,10 +144,7 @@ async def generate_cards(user_id: int, count: int, db: AsyncSession) -> None:
 
         image_url = None
         if card.image_prompt:
-            try:
-                image_url = await generate_image_and_upload(card.image_prompt)
-            except Exception:
-                image_url = None
+            image_url = await generate_image_and_upload(card.image_prompt)
 
         card.image_url = image_url
         card.status = "ready"
