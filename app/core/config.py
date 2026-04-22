@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     QWEN_MODEL: str = "qwen-plus"
 
+    ARK_API_KEY: str = "ark-5630aaf3-aa54-442c-bcac-a38103e7029a-af269"
+    ARK_IMAGE_MODEL: str = "api-key-20260421124338"
+    ARK_IMAGE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
+
     OSS_ACCESS_KEY_ID: str = "REMOVED_OSS_KEY_ID"
     OSS_ACCESS_KEY_SECRET: str = "REMOVED_OSS_KEY_SECRET"
     OSS_ENDPOINT: str = "oss-cn-guangzhou.aliyuncs.com"
