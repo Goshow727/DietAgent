@@ -25,8 +25,8 @@ def upgrade() -> None:
         sa.Column("desc", sa.Text(), nullable=False),
         sa.Column("image_url", sa.String(512), nullable=True),
         sa.Column("image_prompt", sa.Text(), nullable=True),
-        sa.Column("category", sa.String(32), nullable=False, server_default="diet"),
-        sa.Column("status", sa.String(16), nullable=False, server_default="queued"),
+        sa.Column("category", sa.String(32), nullable=False, server_default=sa.text("'diet'")),
+        sa.Column("status", sa.String(16), nullable=False, server_default=sa.text("'queued'")),
         sa.Column("red_cut_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
@@ -34,7 +34,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
