@@ -68,6 +68,8 @@ Existing columns: `id`, `source`, `content`, `embedding` (1536-dim), `created_at
 
 New column added: `category` String(64), nullable — used for pre-filtering during retrieval (e.g., `grains`, `protein`, `vegetables`, `fat`, `salt`, `exercise`).
 
+Requires an Alembic migration to add the `category` column to the existing `vector_docs` table.
+
 Dietary guidelines chunks stored with `source="dietary_guidelines_2022"`.
 
 ---
@@ -80,7 +82,7 @@ All endpoints require JWT auth (`CurrentUser`).
 
 Returns up to N `ready` cards for the current user.
 
-After fetching, computes `remaining = total_ready - N`. If `remaining < POOL_THRESHOLD (8)`, fires `ensure_pool` as a `BackgroundTask` (non-blocking).
+After fetching, counts total `ready` cards for the user. If `total_ready < POOL_THRESHOLD (8)`, fires `ensure_pool` as a `BackgroundTask` (non-blocking). Cards stay `status=ready` after being served — they are only consumed (removed from the pool) when the user red-cuts them.
 
 **Response:**
 ```json
@@ -174,7 +176,7 @@ Each chunk is tagged with a `category` from: `grains`, `vegetables`, `fruits`, `
 
 1. Build a short query string from the user's recent log summary (e.g., `"高脂肪摄入，蛋白质偏低，本周运动不足"`).
 2. Embed the query via DashScope `text-embedding-v2`.
-3. Filter `vector_docs` by relevant categories (derived from user's log profile).
+3. Filter `vector_docs` by relevant categories derived from user's log profile using these rules: if avg daily fat > 35% of kcal → include `fats`; if avg daily protein < 15% of kcal → include `protein`; if burn logs are empty for 3+ days → include `exercise`; if sodium-heavy foods present → include `salt_sugar`; always include `general`. At least 2 categories are always selected.
 4. Cosine similarity search (`<=>` pgvector operator), `LIMIT 5`.
 5. Return the `content` text of the top-5 chunks.
 
