@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import agent, auth, nls, user
+from app.api.v1 import agent, auth, banner, nls, user
 from app.api.v1.food import burn_router, food_router, intake_router
 
 api_router = APIRouter()
@@ -11,3 +11,4 @@ api_router.include_router(nls.router)
 api_router.include_router(food_router)
 api_router.include_router(intake_router)
 api_router.include_router(burn_router)
+api_router.include_router(banner.router)
