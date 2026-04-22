@@ -145,7 +145,10 @@ async def generate_cards(user_id: int, count: int, db: AsyncSession) -> None:
 
         image_url = None
         if card.image_prompt:
-            image_url = await generate_image_and_upload(card.image_prompt)
+            try:
+                image_url = await generate_image_and_upload(card.image_prompt)
+            except Exception:
+                image_url = None
 
         card.image_url = image_url
         card.status = "ready"
