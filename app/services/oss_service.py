@@ -17,3 +17,9 @@ def upload_avatar(data: bytes, content_type: str) -> str:
     key = f"avatars/{uuid.uuid4().hex}.{ext}"
     _bucket().put_object(key, data, headers={"Content-Type": content_type})
     return f"{settings.OSS_BASE_URL}/{key}"
+
+
+def upload_banner_image(data: bytes) -> str:
+    key = f"banners/{uuid.uuid4().hex}.jpg"
+    _bucket().put_object(key, data, headers={"Content-Type": "image/jpeg"})
+    return f"{settings.OSS_BASE_URL}/{key}"
