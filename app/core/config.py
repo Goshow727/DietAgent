@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     OSS_BUCKET: str = "test-zsp-oss"
     OSS_BASE_URL: str = "https://test-zsp-oss.oss-cn-guangzhou.aliyuncs.com"
 
+    NLS_APP_KEY: str = "nuaHPUJwH1r9l6Ch"
+    NLS_ACCESS_KEY_ID: str = ""
+    NLS_ACCESS_KEY_SECRET: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

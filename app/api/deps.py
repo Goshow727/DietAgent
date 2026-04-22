@@ -22,10 +22,7 @@ def _extract_token(authorization: str | None) -> str:
     return parts[1]
 
 
-async def get_current_user(
-    db: DbSession,
-    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
-) -> User:
+async def _resolve_user(db: AsyncSession, authorization: str | None) -> User:
     token = _extract_token(authorization)
     payload = decode_token(token)
     sub = payload.get("sub")
@@ -34,6 +31,14 @@ async def get_current_user(
     user = await get_user_by_id(db, int(sub))
     if not user:
         raise BusinessException(ErrorCode.USER_NOT_FOUND)
+    return user
+
+
+async def get_current_user(
+    db: DbSession,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> User:
+    user = await _resolve_user(db, authorization)
     if not user.is_active:
         raise BusinessException(ErrorCode.FORBIDDEN, "用户已被禁用")
     return user
@@ -47,15 +52,7 @@ async def get_current_user_raw(
     authorization: Annotated[str | None, Header(alias="Authorization")] = None,
 ) -> User:
     """仅验证 token 合法性，不校验 is_active。"""
-    token = _extract_token(authorization)
-    payload = decode_token(token)
-    sub = payload.get("sub")
-    if not sub:
-        raise BusinessException(ErrorCode.TOKEN_INVALID)
-    user = await get_user_by_id(db, int(sub))
-    if not user:
-        raise BusinessException(ErrorCode.USER_NOT_FOUND)
-    return user
+    return await _resolve_user(db, authorization)
 
 
 CurrentUserRaw = Annotated[User, Depends(get_current_user_raw)]

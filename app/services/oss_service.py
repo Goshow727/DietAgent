@@ -1,10 +1,12 @@
 import uuid
+from functools import lru_cache
 
 import oss2
 
 from app.core.config import settings
 
 
+@lru_cache(maxsize=1)
 def _bucket() -> oss2.Bucket:
     auth = oss2.Auth(settings.OSS_ACCESS_KEY_ID, settings.OSS_ACCESS_KEY_SECRET)
     return oss2.Bucket(auth, settings.OSS_ENDPOINT, settings.OSS_BUCKET)

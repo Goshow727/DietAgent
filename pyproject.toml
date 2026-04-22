@@ -23,4 +23,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "python-dotenv>=1.0.1",
     "oss2>=2.19.1",
+    "aliyun-python-sdk-core>=2.16.0",
+    "websockets>=16.0",
+    "httpx>=0.28.1",
 ]

@@ -1,5 +1,3 @@
-from typing import AsyncIterator
-
 import redis.asyncio as redis
 
 from app.core.config import settings
@@ -17,9 +15,6 @@ def get_redis_client() -> redis.Redis:
         )
     return _redis_client
 
-
-async def get_redis() -> AsyncIterator[redis.Redis]:
-    yield get_redis_client()
 
 
 async def close_redis() -> None:

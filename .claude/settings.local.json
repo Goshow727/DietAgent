@@ -6,6 +6,7 @@
       "Bash(py --version)",
       "Bash(python.exe --version)",
       "Bash(uv:*)",
+      "Bash(*)",
       "Bash(wsl --status)",
       "Bash(wsl:*)",
       "Bash(.venv/Scripts/python -c \"from app.core.security import hash_password; print\\(hash_password\\('123456'\\)\\)\")",
@@ -17,7 +18,22 @@
       "Bash(cmd *)",
       "Bash(xargs grep *)",
       "Bash(echo \"exit: $?\")",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(npx expo *)",
+      "Bash(python3 *)",
+      "Bash(where python3 *)",
+      "Bash(C:/Users/zsp41/AppData/Local/Microsoft/WindowsApps/python.exe *)",
+      "Bash(D:/AgentDemo/dietAgent_demo1/.venv/Scripts/python.exe *)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -c \"import ast; ast.parse\\(open\\('test_nls.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import websockets; print\\(websockets.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe test_nls.py)",
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(node *)",
+      "Bash(ALIYUN_AK_ID=REMOVED_OSS_KEY_ID ALIYUN_AK_SECRET=REMOVED_OSS_KEY_SECRET ALIYUN_NLS_APPKEY=nuaHPUJwH1r9l6Ch uv run python",
+      "Edit",
+      "Write",
+      "Read"
     ]
   }
 }
