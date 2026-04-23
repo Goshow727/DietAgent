@@ -1,3 +1,4 @@
+from app.models.banner_daily_get_quota import BannerDailyGetQuota
 from app.models.burn_log import BurnLog
 from app.models.food import Food
 from app.models.intake_log import IntakeLog
@@ -7,6 +8,7 @@ from app.models.user_insight_summary import UserInsightSummary
 from app.models.vector_doc import VectorDoc
 
 __all__ = [
+    "BannerDailyGetQuota",
     "User",
     "VectorDoc",
     "Food",

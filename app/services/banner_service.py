@@ -1,15 +1,22 @@
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 
 from loguru import logger
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.banner_agent import generate_card_drafts, generate_image_and_upload
+from app.core.config import settings
+from app.core.error_code import ErrorCode
+from app.core.exceptions import BusinessException
+from app.db.local_day import next_shanghai_midnight_after, today_local
+from app.models.banner_daily_get_quota import BannerDailyGetQuota
 from app.models.intake_log import IntakeLog
 from app.models.burn_log import BurnLog
 from app.models.recommendation_card import RecommendationCard
 from app.models.user import User
-from app.services import rag_service
+from app.services import oss_service, rag_service
 from app.services.user_body_context import format_user_body_context
 
 POOL_THRESHOLD = 8
@@ -87,12 +94,85 @@ def _derive_rag_categories(
 
 
 async def _red_cut_titles(user_id: int, db: AsyncSession) -> list[str]:
-    stmt = select(RecommendationCard.title).where(
-        RecommendationCard.user_id == user_id,
-        RecommendationCard.status == "red_cut",
+    stmt = (
+        select(RecommendationCard.title)
+        .where(
+            RecommendationCard.user_id == user_id,
+            RecommendationCard.status == "red_cut",
+        )
+        .order_by(
+            RecommendationCard.red_cut_at.desc().nulls_last(),
+            RecommendationCard.created_at.desc(),
+        )
+        .limit(10)
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+async def consume_banner_get_quota(user_id: int, db: AsyncSession) -> None:
+    quota_date = today_local()
+    limit = settings.BANNER_GET_DAILY_LIMIT
+    tbl = BannerDailyGetQuota.__table__
+    upsert = (
+        insert(tbl)
+        .values(user_id=user_id, quota_date=quota_date, request_count=1)
+        .on_conflict_do_update(
+            index_elements=[tbl.c.user_id, tbl.c.quota_date],
+            set_={
+                "request_count": tbl.c.request_count + 1,
+                "updated_at": func.now(),
+            },
+            where=tbl.c.request_count < limit,
+        )
+        .returning(tbl.c.request_count)
+    )
+    res = await db.execute(upsert)
+    row = res.first()
+    if row is not None:
+        await db.commit()
+        return
+
+    current = await db.scalar(
+        select(tbl.c.request_count).where(
+            tbl.c.user_id == user_id,
+            tbl.c.quota_date == quota_date,
+        )
+    )
+    used = int(current if current is not None else limit)
+    resets_at = next_shanghai_midnight_after(quota_date)
+    raise BusinessException(
+        ErrorCode.BANNER_GET_RATE_LIMITED,
+        data={
+            "limit": limit,
+            "used": used,
+            "resets_at": resets_at.isoformat(),
+        },
+    )
+
+
+async def cleanup_expired_red_cut_cards(db: AsyncSession) -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        days=settings.BANNER_REDCUT_RETENTION_DAYS
+    )
+    batch = settings.BANNER_REDCUT_CLEANUP_BATCH_SIZE
+    stmt = (
+        select(RecommendationCard)
+        .where(
+            RecommendationCard.status == "red_cut",
+            RecommendationCard.red_cut_at.is_not(None),
+            RecommendationCard.red_cut_at < cutoff,
+        )
+        .limit(batch)
+    )
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+    for card in rows:
+        await asyncio.to_thread(oss_service.delete_banner_object_by_url, card.image_url)
+        await db.delete(card)
+    if rows:
+        await db.commit()
+    return len(rows)
 
 
 async def generate_cards(user_id: int, count: int, db: AsyncSession) -> None:

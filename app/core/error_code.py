@@ -21,6 +21,7 @@ class ErrorCode(IntEnum):
 
     FOOD_NOT_FOUND = 40001
     LOG_NOT_FOUND = 40002
+    BANNER_GET_RATE_LIMITED = 40003
 
 
 ERROR_MESSAGES: dict[int, str] = {
@@ -39,6 +40,7 @@ ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.AGENT_INVOKE_FAILED: "Agent 调用失败",
     ErrorCode.FOOD_NOT_FOUND: "食物不存在",
     ErrorCode.LOG_NOT_FOUND: "日志不存在",
+    ErrorCode.BANNER_GET_RATE_LIMITED: "今日推荐卡片获取次数已达上限",
 }
 
 

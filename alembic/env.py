@@ -8,7 +8,15 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import User, VectorDoc, Food, IntakeLog, BurnLog, RecommendationCard  # noqa: F401 — ensure models are registered
+from app.models import (  # noqa: F401 — ensure models are registered
+    User,
+    VectorDoc,
+    Food,
+    IntakeLog,
+    BurnLog,
+    RecommendationCard,
+    BannerDailyGetQuota,
+)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

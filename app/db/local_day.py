@@ -50,3 +50,9 @@ def local_inclusive_utc_range(start_d: date, end_d: date) -> tuple[datetime, dat
     s = datetime.combine(start_d, time.min, INSIGHT_TZ)
     e = datetime.combine(end_d + timedelta(days=1), time.min, INSIGHT_TZ)
     return s.astimezone(UTC), e.astimezone(UTC)
+
+
+def next_shanghai_midnight_after(today: date) -> datetime:
+    """东八区日历日 `today` 的次日 00:00（用于配额重置展示）。"""
+    next_day = today + timedelta(days=1)
+    return datetime.combine(next_day, time.min, tzinfo=INSIGHT_TZ)

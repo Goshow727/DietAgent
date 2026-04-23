@@ -35,6 +35,7 @@ async def get_banners(
     ),
 ) -> R[BannerListOut]:
     exclude = _parse_exclude_ids(exclude_ids)
+    await banner_service.consume_banner_get_quota(current_user.id, db)
     cards = await banner_service.get_ready_cards(
         current_user.id, count, db, exclude_ids=exclude
     )
