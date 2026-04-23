@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     QWEN_MODEL: str = "qwen-plus"
 
+    # 首页/洞察总结（见 app/services/insight_llm.py）— OpenAI 兼容接口
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+
     ARK_API_KEY: str = ""
     ARK_VISION_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
     ARK_VISION_MODEL: str = "doubao-seed-2-0-lite-260215"
