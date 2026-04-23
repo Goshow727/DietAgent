@@ -36,7 +36,7 @@ INSIGHT_MONTH = "month"
 MIN_DAYS_WEEK = 5
 MIN_DAYS_MONTH = 20
 
-PLACEHOLDER_NO_LOG = "昨日暂无饮食与运动记录。补充记录后我会为你生成本地化总结与标签。"
+PLACEHOLDER_NO_LOG = "当天暂无饮食与运动记录。补充记录后我会为你生成本地化总结与标签。"
 
 
 async def get_summary_row(
@@ -83,7 +83,7 @@ def _label_hint(p0: date, p1: date, kind: str) -> str:
         return f"{p0.year} 年 {p0.month} 月总结"
     if kind == "week":
         return f"本周 {p0:%m/%d}–{p1:%m/%d}"
-    return f"昨日 {p0.month}/{p0.day}"
+    return f"当天 {p0.month}/{p0.day}"
 
 
 def _static_daily(y: date, desc: str, tags: list[InsightTag] | None = None) -> HomeInsightData:
@@ -238,7 +238,7 @@ async def _build_daily(db: AsyncSession, user_id: int, y: date) -> HomeInsightDa
             db,
             user_id,
             kind="daily",
-            period_text=f"{y.isoformat()} (昨日，上海时区)",
+            period_text=f"{y.isoformat()}（当天）",
             start_d=y,
             end_d=y,
         )
