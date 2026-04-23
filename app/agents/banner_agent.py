@@ -31,6 +31,21 @@ def _url_snippet(url: str, max_len: int = 100) -> str:
     return s[:max_len] + "…"
 
 
+def _ark_image_size(size: str) -> str:
+    """Ark v3 Seedream 部分模型对 size=1K 返回 400，低清改用合法像素规格。"""
+    s = (size or "").strip()
+    if s.upper() == "1K":
+        return "1024x1024"
+    return s
+
+
+def _image_content_type(img_resp: httpx.Response) -> str:
+    ct = (img_resp.headers.get("content-type") or "").split(";")[0].strip().lower()
+    if ct.startswith("image/"):
+        return ct
+    return "image/png"
+
+
 async def generate_card_drafts(
     guideline_chunks: list[str],
     user_body_block: str,
@@ -64,18 +79,29 @@ async def generate_image_and_upload(image_prompt: str) -> str | None:
         "Authorization": f"Bearer {settings.ARK_API_KEY}",
         "Content-Type": "application/json",
     }
-    # 与火山 Ark Seedream 图像 API 示例一致（非 DALL·E 的 n + 1024x1024 形态）
+    # Seedream 4 文档常不支持 output_format；需 response_format / sequential_image_generation 等字段
     payload = {
         "model": settings.ARK_IMAGE_MODEL,
         "prompt": image_prompt,
-        "size": settings.ARK_IMAGE_SIZE,
-        "output_format": "png",
+        "size": _ark_image_size(settings.ARK_IMAGE_SIZE),
+        "sequential_image_generation": "disabled",
+        "stream": False,
+        "response_format": "url",
         "watermark": False,
     }
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             resp = await client.post(settings.ARK_IMAGE_URL, json=payload, headers=headers)
             resp.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            body = (e.response.text or "")[:800]
+            logger.exception(
+                "banner_image:ark_request HTTP status={} body_snippet={!r} prompt_snippet={!r}",
+                e.response.status_code,
+                body,
+                snippet,
+            )
+            return None
         except Exception:
             logger.exception("banner_image:ark_request failed prompt_snippet={!r}", snippet)
             return None
@@ -96,7 +122,8 @@ async def generate_image_and_upload(image_prompt: str) -> str | None:
             )
             return None
         try:
-            return upload_banner_image(img_resp.content, content_type="image/png")
+            ct = _image_content_type(img_resp)
+            return upload_banner_image(img_resp.content, content_type=ct)
         except Exception:
             logger.exception(
                 "banner_image:oss_upload failed bucket={} endpoint={} prompt_snippet={!r}",
