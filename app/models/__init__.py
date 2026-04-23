@@ -3,6 +3,15 @@ from app.models.food import Food
 from app.models.intake_log import IntakeLog
 from app.models.recommendation_card import RecommendationCard
 from app.models.user import User
+from app.models.user_insight_summary import UserInsightSummary
 from app.models.vector_doc import VectorDoc
 
-__all__ = ["User", "VectorDoc", "Food", "IntakeLog", "BurnLog", "RecommendationCard"]
+__all__ = [
+    "User",
+    "VectorDoc",
+    "Food",
+    "IntakeLog",
+    "BurnLog",
+    "RecommendationCard",
+    "UserInsightSummary",
+]
