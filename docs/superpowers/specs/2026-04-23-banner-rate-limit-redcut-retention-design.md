@@ -1,7 +1,7 @@
 # Banner 推荐卡片：GET 日配额、红切保留与清理、提示词红切范围
 
 **日期:** 2026-04-23  
-**状态:** 已对话确认，待实现计划（`writing-plans`）
+**状态:** 已实现（见 `docs/superpowers/plans/2026-04-23-banner-rate-limit-redcut-retention.md`）
 
 ## 背景与目标
 
