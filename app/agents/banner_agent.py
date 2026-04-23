@@ -64,11 +64,13 @@ async def generate_image_and_upload(image_prompt: str) -> str | None:
         "Authorization": f"Bearer {settings.ARK_API_KEY}",
         "Content-Type": "application/json",
     }
+    # 与火山 Ark Seedream 图像 API 示例一致（非 DALL·E 的 n + 1024x1024 形态）
     payload = {
         "model": settings.ARK_IMAGE_MODEL,
         "prompt": image_prompt,
-        "n": 1,
-        "size": "1024x1024",
+        "size": "2K",
+        "output_format": "png",
+        "watermark": False,
     }
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
@@ -94,7 +96,7 @@ async def generate_image_and_upload(image_prompt: str) -> str | None:
             )
             return None
         try:
-            return upload_banner_image(img_resp.content)
+            return upload_banner_image(img_resp.content, content_type="image/png")
         except Exception:
             logger.exception(
                 "banner_image:oss_upload failed bucket={} endpoint={} prompt_snippet={!r}",
