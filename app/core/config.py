@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     QWEN_MODEL: str = "qwen-plus"
 
     ARK_API_KEY: str = ""
-    ARK_IMAGE_MODEL: str = "Doubao-Seedream-4.0"
+    ARK_IMAGE_MODEL: str = "doubao-seedream-4-0-250828"
     ARK_IMAGE_SIZE: str = "1K"
     ARK_IMAGE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
 
