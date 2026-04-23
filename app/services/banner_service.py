@@ -146,6 +146,13 @@ async def generate_cards(user_id: int, count: int, db: AsyncSession) -> None:
         if card.image_prompt:
             image_url = await generate_image_and_upload(card.image_prompt)
 
+        if card.image_prompt and image_url is None:
+            logger.warning(
+                "Banner card ready without image user_id={} card_id={} (see banner_image:* logs)",
+                user_id,
+                card.id,
+            )
+
         card.image_url = image_url
         card.status = "ready"
         await db.commit()
@@ -158,16 +165,19 @@ async def ensure_pool(user_id: int, db: AsyncSession) -> None:
         await generate_cards(user_id=user_id, count=deficit, db=db)
 
 
-async def get_ready_cards(user_id: int, count: int, db: AsyncSession) -> list[RecommendationCard]:
-    stmt = (
-        select(RecommendationCard)
-        .where(
-            RecommendationCard.user_id == user_id,
-            RecommendationCard.status == "ready",
-        )
-        .order_by(RecommendationCard.created_at.asc())
-        .limit(count)
+async def get_ready_cards(
+    user_id: int,
+    count: int,
+    db: AsyncSession,
+    exclude_ids: set[str] | None = None,
+) -> list[RecommendationCard]:
+    stmt = select(RecommendationCard).where(
+        RecommendationCard.user_id == user_id,
+        RecommendationCard.status == "ready",
     )
+    if exclude_ids:
+        stmt = stmt.where(RecommendationCard.id.notin_(exclude_ids))
+    stmt = stmt.order_by(RecommendationCard.created_at.asc()).limit(count)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -193,6 +203,26 @@ async def next_ready_card(user_id: int, db: AsyncSession) -> RecommendationCard 
         .where(
             RecommendationCard.user_id == user_id,
             RecommendationCard.status == "ready",
+        )
+        .order_by(RecommendationCard.created_at.asc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def next_ready_card_not_in(
+    user_id: int, db: AsyncSession, exclude_ids: set[str]
+) -> RecommendationCard | None:
+    """Next ready card by created_at, excluding ids still shown in the client carousel."""
+    if not exclude_ids:
+        return await next_ready_card(user_id, db)
+    stmt = (
+        select(RecommendationCard)
+        .where(
+            RecommendationCard.user_id == user_id,
+            RecommendationCard.status == "ready",
+            RecommendationCard.id.notin_(exclude_ids),
         )
         .order_by(RecommendationCard.created_at.asc())
         .limit(1)

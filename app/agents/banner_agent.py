@@ -3,6 +3,7 @@ import re
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
+from loguru import logger
 
 from app.agents.diet_agent import _get_llm
 from app.core.config import settings
@@ -14,6 +15,20 @@ def _strip_json(text: str) -> str:
     text = text.strip()
     m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
     return m.group(1).strip() if m else text
+
+
+def _prompt_snippet(image_prompt: str, max_len: int = 80) -> str:
+    s = (image_prompt or "").strip()
+    if len(s) <= max_len:
+        return s
+    return s[:max_len] + "…"
+
+
+def _url_snippet(url: str, max_len: int = 100) -> str:
+    s = url or ""
+    if len(s) <= max_len:
+        return s
+    return s[:max_len] + "…"
 
 
 async def generate_card_drafts(
@@ -44,6 +59,7 @@ async def generate_card_drafts(
 
 
 async def generate_image_and_upload(image_prompt: str) -> str | None:
+    snippet = _prompt_snippet(image_prompt)
     headers = {
         "Authorization": f"Bearer {settings.ARK_API_KEY}",
         "Content-Type": "application/json",
@@ -54,14 +70,36 @@ async def generate_image_and_upload(image_prompt: str) -> str | None:
         "n": 1,
         "size": "1024x1024",
     }
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
             resp = await client.post(settings.ARK_IMAGE_URL, json=payload, headers=headers)
             resp.raise_for_status()
-            image_url = resp.json()["data"][0]["url"]
+        except Exception:
+            logger.exception("banner_image:ark_request failed prompt_snippet={!r}", snippet)
+            return None
+        try:
+            data = resp.json()
+            image_url = data["data"][0]["url"]
+        except (KeyError, IndexError, TypeError, ValueError):
+            logger.exception("banner_image:ark_request invalid response prompt_snippet={!r}", snippet)
+            return None
+        try:
             img_resp = await client.get(image_url, timeout=30.0)
             img_resp.raise_for_status()
-            oss_url = upload_banner_image(img_resp.content)
-            return oss_url
-    except Exception:
-        return None
+        except Exception:
+            logger.exception(
+                "banner_image:image_fetch failed url={!r} prompt_snippet={!r}",
+                _url_snippet(image_url),
+                snippet,
+            )
+            return None
+        try:
+            return upload_banner_image(img_resp.content)
+        except Exception:
+            logger.exception(
+                "banner_image:oss_upload failed bucket={} endpoint={} prompt_snippet={!r}",
+                settings.OSS_BUCKET,
+                settings.OSS_ENDPOINT,
+                snippet,
+            )
+            return None
