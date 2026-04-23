@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class FoodRead(BaseModel):
@@ -14,10 +15,29 @@ class FoodRead(BaseModel):
     fat_per_100g: float
 
 
+class IntakeInlineFood(BaseModel):
+    """与食物库中一条记录等价的每 100g 营养，用于照片估计等无 food_id 场景。"""
+
+    name: str = Field(max_length=128)
+    kcal_per_100g: float = Field(ge=0)
+    protein_per_100g: float = Field(ge=0)
+    carb_per_100g: float = Field(ge=0)
+    fat_per_100g: float = Field(ge=0)
+
+
 class IntakeLogCreate(BaseModel):
-    food_id: int
+    food_id: int | None = None
+    inline_food: IntakeInlineFood | None = None
     weight_grams: float = Field(gt=0)
     logged_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def food_source_xor(self) -> Self:
+        has_id = self.food_id is not None
+        has_inline = self.inline_food is not None
+        if has_id == has_inline:
+            raise ValueError("必须且只能提供 food_id 与 inline_food 之一")
+        return self
 
 
 class IntakeLogRead(BaseModel):

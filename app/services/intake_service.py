@@ -8,11 +8,23 @@ from app.core.exceptions import BusinessException
 from app.db.utils import day_range_utc
 from app.models.intake_log import IntakeLog
 from app.schemas.food import IntakeLogCreate
-from app.services.food_service import get_food_by_id
+from app.services.food_service import create_food_from_estimate, get_food_by_id
 
 
 async def create_intake(db: AsyncSession, user_id: int, payload: IntakeLogCreate) -> IntakeLog:
-    food = await get_food_by_id(db, payload.food_id)
+    if payload.food_id is not None:
+        food = await get_food_by_id(db, payload.food_id)
+    else:
+        assert payload.inline_food is not None
+        inf = payload.inline_food
+        food = await create_food_from_estimate(
+            db,
+            name=inf.name,
+            kcal_per_100g=inf.kcal_per_100g,
+            protein_per_100g=inf.protein_per_100g,
+            carb_per_100g=inf.carb_per_100g,
+            fat_per_100g=inf.fat_per_100g,
+        )
     ratio = payload.weight_grams / 100
     log = IntakeLog(
         user_id=user_id,

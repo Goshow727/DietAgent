@@ -18,3 +18,25 @@ async def get_food_by_id(db: AsyncSession, food_id: int) -> Food:
     if not food:
         raise BusinessException(ErrorCode.FOOD_NOT_FOUND)
     return food
+
+
+async def create_food_from_estimate(
+    db: AsyncSession,
+    name: str,
+    kcal_per_100g: float,
+    protein_per_100g: float,
+    carb_per_100g: float,
+    fat_per_100g: float,
+) -> Food:
+    """为照片估计等场景插入一条可复用的 `foods` 行，再用于 `intake_logs` 外键。"""
+    food = Food(
+        name=name[:128],
+        kcal_per_100g=kcal_per_100g,
+        protein_per_100g=protein_per_100g,
+        carb_per_100g=carb_per_100g,
+        fat_per_100g=fat_per_100g,
+    )
+    db.add(food)
+    await db.commit()
+    await db.refresh(food)
+    return food

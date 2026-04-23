@@ -26,6 +26,7 @@ dependencies = [
     "aliyun-python-sdk-core>=2.16.0",
     "websockets>=16.0",
     "httpx>=0.28.1",
+    "volcengine-python-sdk[ark]>=5.0.24",
 ]
 
 [tool.pytest.ini_options]
