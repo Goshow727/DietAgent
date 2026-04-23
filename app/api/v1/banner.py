@@ -1,14 +1,21 @@
-from fastapi import APIRouter, BackgroundTasks, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Query
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.error_code import ErrorCode
 from app.core.exceptions import BusinessException
 from app.core.response import R
 from app.db.session import AsyncSessionLocal
-from app.schemas.banner import BannerListOut, CardOut, RedCutOut
+from app.schemas.banner import BannerListOut, CardOut, RedCutIn, RedCutOut
 from app.services import banner_service
 
 router = APIRouter(prefix="/banners", tags=["banners"])
+
+
+def _parse_exclude_ids(raw: str | None) -> set[str] | None:
+    if not raw or not raw.strip():
+        return None
+    ids = {p.strip() for p in raw.split(",") if p.strip()}
+    return ids or None
 
 
 async def _bg_ensure_pool(user_id: int) -> None:
@@ -21,9 +28,16 @@ async def get_banners(
     background_tasks: BackgroundTasks,
     current_user: CurrentUser,
     db: DbSession,
-    count: int = Query(default=5, ge=1, le=10),
+    count: int = Query(default=1, ge=1, le=10),
+    exclude_ids: str | None = Query(
+        default=None,
+        description="Comma-separated recommendation_card ids to exclude (e.g. already on device)",
+    ),
 ) -> R[BannerListOut]:
-    cards = await banner_service.get_ready_cards(current_user.id, count, db)
+    exclude = _parse_exclude_ids(exclude_ids)
+    cards = await banner_service.get_ready_cards(
+        current_user.id, count, db, exclude_ids=exclude
+    )
     total_ready = await banner_service.ready_count(current_user.id, db)
     if total_ready < banner_service.POOL_THRESHOLD:
         background_tasks.add_task(_bg_ensure_pool, current_user.id)
@@ -37,20 +51,23 @@ async def red_cut_banner(
     background_tasks: BackgroundTasks,
     current_user: CurrentUser,
     db: DbSession,
+    body: RedCutIn = Body(default_factory=RedCutIn),
 ) -> R[RedCutOut]:
+    _ = body  # 保留 body 以兼容旧客户端；下一张请用 GET ?count=1&exclude_ids=
     card = await banner_service.red_cut_card(card_id, current_user.id, db)
     if card is None:
         raise BusinessException(ErrorCode.NOT_FOUND, f"Card {card_id} not found")
-    next_card = await banner_service.next_ready_card(current_user.id, db)
     background_tasks.add_task(_bg_ensure_pool, current_user.id)
-    next_out = CardOut.model_validate(next_card) if next_card else None
-    return R.ok(RedCutOut(card=next_out))
+    return R.ok(RedCutOut(card=None))
 
 
 @router.post("/init", response_model=R[None])
 async def init_banner_pool(
     background_tasks: BackgroundTasks,
     current_user: CurrentUser,
+    db: DbSession,
 ) -> R[None]:
-    background_tasks.add_task(_bg_ensure_pool, current_user.id)
+    total_ready = await banner_service.ready_count(current_user.id, db)
+    if total_ready < banner_service.POOL_THRESHOLD:
+        background_tasks.add_task(_bg_ensure_pool, current_user.id)
     return R.ok(None)

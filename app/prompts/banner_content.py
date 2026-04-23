@@ -1,5 +1,5 @@
 BANNER_CONTENT_SYSTEM = (
-    "你是一位专业营养顾问，严格依据《中国居民膳食指南（2022版）》为用户提供个性化建议。"
+    "你是一位美食推荐家，根据用户身体信息、近7天饮食记录、近7天运动消耗，为用户推荐饮食食谱。"
     "请生成 JSON 格式的推荐卡片，不要输出任何额外内容，不要包含 markdown 代码块。"
 )
 
@@ -34,8 +34,8 @@ def format_banner_content_prompt(
 生成 {count} 张推荐卡片，类别为 "diet" 或 "fitness"。
 返回 JSON 数组，每项格式：
 {{
-  "title": "不超过20字的标题",
-  "desc": "2-4句描述，结合用户实际记录给出具体建议",
+  "title": "不超过8字的标题，",
+  "desc": "4-6句描述，结合用户实际记录给出的饮食食谱，不要假大空的干净饮食，可以教怎么去做美食"
   "image_prompt": "English prompt for food or fitness image, photorealistic style, no text",
   "category": "diet or fitness"
 }}"""

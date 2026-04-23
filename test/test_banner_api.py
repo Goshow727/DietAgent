@@ -76,3 +76,72 @@ async def test_red_cut_returns_404_when_card_not_found():
     assert resp.status_code == 200
     data = resp.json()
     assert data["code"] == 10004
+
+
+@pytest.mark.asyncio
+async def test_init_schedules_ensure_when_below_threshold():
+    mock_user = MagicMock(id=1, is_active=True)
+
+    async def override_get_current_user():
+        return mock_user
+
+    async def override_get_db():
+        yield AsyncMock()
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        with patch(
+            "app.api.v1.banner.banner_service.ready_count",
+            new_callable=AsyncMock,
+        ) as mock_rc, patch(
+            "app.api.v1.banner._bg_ensure_pool",
+            new_callable=AsyncMock,
+        ) as mock_bg:
+            mock_rc.return_value = 3
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/v1/banners/init",
+                    headers={"Authorization": "Bearer test-token"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 200
+    assert resp.json()["code"] == 0
+    mock_bg.assert_awaited_once_with(1)
+
+
+@pytest.mark.asyncio
+async def test_init_skips_ensure_when_pool_full():
+    mock_user = MagicMock(id=1, is_active=True)
+
+    async def override_get_current_user():
+        return mock_user
+
+    async def override_get_db():
+        yield AsyncMock()
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        with patch(
+            "app.api.v1.banner.banner_service.ready_count",
+            new_callable=AsyncMock,
+        ) as mock_rc, patch(
+            "app.api.v1.banner._bg_ensure_pool",
+            new_callable=AsyncMock,
+        ) as mock_bg:
+            mock_rc.return_value = 8
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/v1/banners/init",
+                    headers={"Authorization": "Bearer test-token"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 200
+    mock_bg.assert_not_called()
