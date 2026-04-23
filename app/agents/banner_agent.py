@@ -68,7 +68,7 @@ async def generate_image_and_upload(image_prompt: str) -> str | None:
     payload = {
         "model": settings.ARK_IMAGE_MODEL,
         "prompt": image_prompt,
-        "size": "2K",
+        "size": settings.ARK_IMAGE_SIZE,
         "output_format": "png",
         "watermark": False,
     }
