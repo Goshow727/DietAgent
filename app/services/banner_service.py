@@ -204,6 +204,7 @@ async def generate_cards(user_id: int, count: int, db: AsyncSession) -> None:
             burn_summary=_burn_summary(burn_logs),
             red_cut_titles=red_cut,
             count=count,
+            user_id=user_id,
         )
     except Exception as e:
         logger.error(f"Banner content generation failed for user {user_id}: {e}")

@@ -33,7 +33,7 @@ def test_derive_categories_low_exercise():
 
 @pytest.mark.asyncio
 async def test_generate_card_drafts_returns_list():
-    with patch("app.agents.banner_agent._get_llm") as mock_get_llm:
+    with patch("app.agents.banner_agent._get_llm_for_banner") as mock_get_llm:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = MagicMock(
             content='[{"title":"高蛋白早餐","desc":"适合增肌","image_prompt":"grilled chicken","category":"diet"}]'
@@ -53,6 +53,34 @@ async def test_generate_card_drafts_returns_list():
     assert len(drafts) == 1
     assert drafts[0]["title"] == "高蛋白早餐"
     assert drafts[0]["category"] == "diet"
+    mock_get_llm.assert_called_once_with(enable_search=False)
+
+
+@pytest.mark.asyncio
+async def test_generate_card_drafts_calls_enable_search_true_when_config_on():
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(
+        return_value=MagicMock(
+            content='[{"title":"T","desc":"D","image_prompt":"P","category":"diet"}]'
+        )
+    )
+    with patch("app.agents.banner_agent._get_llm_for_banner") as mock_get:
+        mock_get.return_value = mock_llm
+        with patch("app.agents.banner_agent.settings") as s:
+            s.BANNER_ENABLE_NETWORK_SEARCH = True
+            from app.agents.banner_agent import generate_card_drafts
+
+            out = await generate_card_drafts(
+                guideline_chunks=[],
+                user_body_block="b",
+                intake_summary="i",
+                burn_summary="b2",
+                red_cut_titles=[],
+                count=1,
+            )
+    assert len(out) == 1
+    mock_get.assert_called_once()
+    assert mock_get.call_args.kwargs.get("enable_search") is True
 
 
 @pytest.mark.asyncio

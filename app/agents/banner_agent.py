@@ -3,9 +3,9 @@ import re
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 from loguru import logger
 
-from app.agents.diet_agent import _get_llm
 from app.core.config import settings
 from app.prompts import BANNER_CONTENT_SYSTEM, format_banner_content_prompt
 from app.services.oss_service import upload_banner_image
@@ -46,6 +46,23 @@ def _image_content_type(img_resp: httpx.Response) -> str:
     return "image/png"
 
 
+def _get_llm_for_banner(*, enable_search: bool) -> ChatOpenAI:
+    if enable_search:
+        return ChatOpenAI(
+            model=settings.QWEN_MODEL,
+            api_key=settings.DASHSCOPE_API_KEY,
+            base_url=settings.DASHSCOPE_BASE_URL,
+            temperature=0.2,
+            extra_body={"enable_search": True},
+        )
+    return ChatOpenAI(
+        model=settings.QWEN_MODEL,
+        api_key=settings.DASHSCOPE_API_KEY,
+        base_url=settings.DASHSCOPE_BASE_URL,
+        temperature=0.2,
+    )
+
+
 async def generate_card_drafts(
     guideline_chunks: list[str],
     user_body_block: str,
@@ -53,6 +70,7 @@ async def generate_card_drafts(
     burn_summary: str,
     red_cut_titles: list[str],
     count: int,
+    user_id: int | None = None,
 ) -> list[dict]:
     prompt = format_banner_content_prompt(
         guideline_chunks=guideline_chunks,
@@ -62,10 +80,26 @@ async def generate_card_drafts(
         red_cut_titles=red_cut_titles,
         count=count,
     )
-    llm = _get_llm()
-    resp = await llm.ainvoke(
-        [SystemMessage(content=BANNER_CONTENT_SYSTEM), HumanMessage(content=prompt)]
-    )
+    messages = [
+        SystemMessage(content=BANNER_CONTENT_SYSTEM),
+        HumanMessage(content=prompt),
+    ]
+    use_net = bool(settings.BANNER_ENABLE_NETWORK_SEARCH)
+    if use_net:
+        try:
+            llm = _get_llm_for_banner(enable_search=True)
+            resp = await llm.ainvoke(messages)
+        except Exception as e:
+            logger.warning(
+                "banner: card draft with enable_search failed user_id={} err={!r}",
+                user_id,
+                e,
+            )
+            llm = _get_llm_for_banner(enable_search=False)
+            resp = await llm.ainvoke(messages)
+    else:
+        llm = _get_llm_for_banner(enable_search=False)
+        resp = await llm.ainvoke(messages)
     content = resp.content if isinstance(resp.content, str) else str(resp.content)
     data = json.loads(_strip_json(content))
     if not isinstance(data, list):
