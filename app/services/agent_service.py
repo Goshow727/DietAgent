@@ -27,6 +27,7 @@ from app.schemas.food import BurnLogCreate
 from app.schemas.intake_draft import IntakeConfirmDraft, IntakeDraftLine
 from app.schemas.intake_extraction import ChatFlow, IntakeChatExtraction
 from app.services import burn_service, chat_pending_service
+from app.services.chat_confirm_utils import parse_confirm_intent
 from app.services.user_body_context import format_user_body_context
 
 # 食物名开头的「一个」「200克」等量词+单位，入库前应去掉（如「一个鸡蛋」→「鸡蛋」）
@@ -171,24 +172,6 @@ def _session_id(payload: ChatIn) -> str | None:
     return sid.strip() if isinstance(sid, str) and sid.strip() else None
 
 
-def _parse_confirm_intent(text: str) -> str | None:
-    raw = text.strip()
-    low = raw.lower()
-    for w in ("取消", "不录", "不要", "算了", "放弃"):
-        if w in raw:
-            return "cancel"
-    if low in ("n", "no"):
-        return "cancel"
-    for w in ("确认", "确定", "保存", "录入"):
-        if w in raw:
-            return "confirm"
-    if low in ("ok", "yes", "y"):
-        return "confirm"
-    if raw in ("好", "行", "嗯", "恩", "可以", "好的", "好吧"):
-        return "confirm"
-    return None
-
-
 def _exercise_cn(exercise_type: str) -> str:
     return "有氧" if exercise_type == "cardio" else "无氧"
 
@@ -235,7 +218,7 @@ async def chat(payload: ChatIn, db: AsyncSession, user: User) -> ChatOut:
 
     confirm_draft = await chat_pending_service.get_confirm_draft(user_id, session)
     if confirm_draft is not None:
-        decision = _parse_confirm_intent(msg)
+        decision = parse_confirm_intent(msg)
         if decision == "confirm":
             await chat_pending_service.clear_confirm_draft(user_id, session)
             try:
@@ -267,7 +250,7 @@ async def chat(payload: ChatIn, db: AsyncSession, user: User) -> ChatOut:
 
     burn_confirm = await chat_pending_service.get_burn_confirm_draft(user_id, session)
     if burn_confirm is not None:
-        decision = _parse_confirm_intent(msg)
+        decision = parse_confirm_intent(msg)
         if decision == "confirm":
             await chat_pending_service.clear_burn_confirm_draft(user_id, session)
             try:
