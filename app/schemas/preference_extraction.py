@@ -17,3 +17,9 @@ class PreferenceExtraction(BaseModel):
     flow: PreferenceFlow
     clarify_message: str = ""
     items: list[PreferenceItem] = Field(default_factory=list)
+
+
+class PreferenceConfirmDraft(BaseModel):
+    """待用户确认写入的偏好列表（Redis / HITL 草案）。"""
+
+    items: list[PreferenceItem] = Field(default_factory=list)

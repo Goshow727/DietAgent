@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     NLS_ACCESS_KEY_ID: str = ""
     NLS_ACCESS_KEY_SECRET: str = ""
 
+    # 饮食 Agent：True 时使用 LangGraph + MemorySaver checkpoint（多进程不共享状态）
+    USE_LANGGRAPH_CHAT: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -8,11 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.burn_agent import extract_burn_chat, normalize_burn_extraction
 from app.agents.diet_agent import (
     _get_llm,
+    extract_body_metrics_chat,
     extract_intake_chat,
+    extract_preferences_chat,
     generate_general_advice,
     normalize_extraction,
     route_chat_intent,
 )
+from app.core.config import settings
 from app.core.error_code import ErrorCode
 from app.core.exceptions import BusinessException
 from app.prompts import format_food_per_100g_estimate_prompt
@@ -22,13 +25,16 @@ from app.models.user import User
 from app.schemas.agent import ChatIn, ChatOut
 from app.schemas.burn_draft import BurnConfirmDraft, BurnDraftLine
 from app.schemas.burn_extraction import BurnFlow
+from app.schemas.body_patch import BodyMetricsFlow, BodyMetricsPatch
 from app.schemas.chat_intent import ChatIntentRoute, ChatRouteIntent
 from app.schemas.food import BurnLogCreate
 from app.schemas.intake_draft import IntakeConfirmDraft, IntakeDraftLine
 from app.schemas.intake_extraction import ChatFlow, IntakeChatExtraction
-from app.services import burn_service, chat_pending_service
+from app.schemas.preference_extraction import PreferenceConfirmDraft, PreferenceFlow
+from app.schemas.user import UserUpdate
+from app.services import burn_service, chat_pending_service, user_preference_service, user_service
 from app.services.chat_confirm_utils import parse_confirm_intent
-from app.services.user_body_context import format_user_body_context
+from app.services.user_body_context import format_user_context_for_model
 
 # 食物名开头的「一个」「200克」等量词+单位，入库前应去掉（如「一个鸡蛋」→「鸡蛋」）
 _LEADING_QTY_UNIT = re.compile(
@@ -210,10 +216,43 @@ def _build_burn_preview(items: list[BurnDraftLine]) -> str:
     )
 
 
+def _build_body_metrics_preview(patch: BodyMetricsPatch) -> str:
+    parts: list[str] = []
+    if patch.height is not None:
+        parts.append(f"身高 {patch.height:g} cm")
+    if patch.weight is not None:
+        parts.append(f"体重 {patch.weight:g} kg")
+    if patch.age is not None:
+        parts.append(f"年龄 {patch.age}")
+    if patch.gender is not None and str(patch.gender).strip():
+        parts.append(f"性别 {patch.gender}")
+    body = "；".join(parts) if parts else "（无具体字段）"
+    return (
+        f"将为您更新身体信息（尚未写入）：\n{body}\n\n"
+        f"请回复「确认」保存，或「取消」放弃。"
+    )
+
+
+def _build_preference_preview(draft: PreferenceConfirmDraft) -> str:
+    lines: list[str] = []
+    for i, it in enumerate(draft.items, start=1):
+        lines.append(f"{i}. [{it.category}] {it.raw_text}")
+    body = "\n".join(lines)
+    return (
+        f"将为您记录以下饮食偏好（尚未写入）：\n{body}\n\n"
+        f"请回复「确认」保存，或「取消」放弃。"
+    )
+
+
 async def chat(payload: ChatIn, db: AsyncSession, user: User) -> ChatOut:
+    if settings.USE_LANGGRAPH_CHAT:
+        from app.services.chat_graph_runner import run_chat_turn
+
+        return await run_chat_turn(payload, db, user)
+
     user_id = user.id
     session = _session_id(payload)
-    body_block = format_user_body_context(user)
+    body_block = await format_user_context_for_model(db, user)
     msg = payload.message
 
     confirm_draft = await chat_pending_service.get_confirm_draft(user_id, session)
@@ -292,6 +331,65 @@ async def chat(payload: ChatIn, db: AsyncSession, user: User) -> ChatOut:
             pass
         return ChatOut(reply=_build_burn_preview(burn_confirm.items))
 
+    body_patch_draft = await chat_pending_service.get_body_confirm_patch(user_id, session)
+    if body_patch_draft is not None:
+        decision = parse_confirm_intent(msg)
+        if decision == "confirm":
+            await chat_pending_service.clear_body_confirm_patch(user_id, session)
+            try:
+                uu = UserUpdate(**body_patch_draft.model_dump(exclude_none=True))
+                await user_service.update_user(db, user, uu)
+                await db.refresh(user)
+                return ChatOut(reply="已更新身体信息。")
+            except Exception as e:
+                logger.exception(f"confirm body patch failed: {e}")
+                raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
+        if decision == "cancel":
+            await chat_pending_service.clear_body_confirm_patch(user_id, session)
+            return ChatOut(reply="已取消，未更新身体信息。")
+        try:
+            routed_body = await route_chat_intent(msg)
+            if routed_body.intent == ChatRouteIntent.general:
+                await chat_pending_service.clear_all_chat_state(user_id, session)
+                try:
+                    reply = await generate_general_advice(msg)
+                except Exception as e:
+                    logger.exception(f"generate_general_advice failed: {e}")
+                    raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
+                return ChatOut(reply=reply)
+        except Exception:
+            pass
+        return ChatOut(reply=_build_body_metrics_preview(body_patch_draft))
+
+    pref_draft = await chat_pending_service.get_preference_confirm_draft(user_id, session)
+    if pref_draft is not None:
+        decision = parse_confirm_intent(msg)
+        if decision == "confirm":
+            await chat_pending_service.clear_preference_confirm_draft(user_id, session)
+            try:
+                tuples = [(it.category, it.raw_text) for it in pref_draft.items]
+                await user_preference_service.add_preferences(db, user_id, tuples)
+                return ChatOut(reply="已保存您的饮食偏好。")
+            except Exception as e:
+                logger.exception(f"confirm preference failed: {e}")
+                raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
+        if decision == "cancel":
+            await chat_pending_service.clear_preference_confirm_draft(user_id, session)
+            return ChatOut(reply="已取消，未写入饮食偏好。")
+        try:
+            routed_p = await route_chat_intent(msg)
+            if routed_p.intent == ChatRouteIntent.general:
+                await chat_pending_service.clear_all_chat_state(user_id, session)
+                try:
+                    reply = await generate_general_advice(msg)
+                except Exception as e:
+                    logger.exception(f"generate_general_advice failed: {e}")
+                    raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
+                return ChatOut(reply=reply)
+        except Exception:
+            pass
+        return ChatOut(reply=_build_preference_preview(pref_draft))
+
     burn_pending = await chat_pending_service.get_burn_pending_context(user_id, session)
     intake_pending = await chat_pending_service.get_pending_context(user_id, session)
     if burn_pending and intake_pending:
@@ -319,6 +417,56 @@ async def chat(payload: ChatIn, db: AsyncSession, user: User) -> ChatOut:
             logger.exception(f"generate_general_advice failed: {e}")
             raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
         return ChatOut(reply=reply)
+
+    if routed.intent == ChatRouteIntent.update_body_metrics:
+        await chat_pending_service.clear_pending(user_id, session)
+        await chat_pending_service.clear_confirm_draft(user_id, session)
+        await chat_pending_service.clear_burn_pending(user_id, session)
+        await chat_pending_service.clear_burn_confirm_draft(user_id, session)
+        await chat_pending_service.clear_body_confirm_patch(user_id, session)
+        await chat_pending_service.clear_preference_confirm_draft(user_id, session)
+        try:
+            raw_b = await extract_body_metrics_chat(msg, body_block)
+        except Exception as e:
+            logger.exception(f"extract_body_metrics_chat failed: {e}")
+            try:
+                reply = await generate_general_advice(msg)
+                return ChatOut(reply=reply)
+            except Exception:
+                raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
+        if raw_b.flow == BodyMetricsFlow.need_clarify:
+            clar = (raw_b.clarify_message or "").strip() or "请说明要更新的身高、体重、年龄或性别。"
+            return ChatOut(reply=clar)
+        patch = raw_b.patch
+        if patch is None or not patch.model_dump(exclude_none=True):
+            return ChatOut(reply="请说明要更新的身高或体重等具体数值。")
+        await chat_pending_service.set_body_confirm_patch(user_id, patch, session)
+        return ChatOut(reply=_build_body_metrics_preview(patch))
+
+    if routed.intent == ChatRouteIntent.update_preferences:
+        await chat_pending_service.clear_pending(user_id, session)
+        await chat_pending_service.clear_confirm_draft(user_id, session)
+        await chat_pending_service.clear_burn_pending(user_id, session)
+        await chat_pending_service.clear_burn_confirm_draft(user_id, session)
+        await chat_pending_service.clear_body_confirm_patch(user_id, session)
+        await chat_pending_service.clear_preference_confirm_draft(user_id, session)
+        try:
+            raw_p = await extract_preferences_chat(msg, body_block)
+        except Exception as e:
+            logger.exception(f"extract_preferences_chat failed: {e}")
+            try:
+                reply = await generate_general_advice(msg)
+                return ChatOut(reply=reply)
+            except Exception:
+                raise BusinessException(ErrorCode.AGENT_INVOKE_FAILED, str(e)) from e
+        if raw_p.flow == PreferenceFlow.need_clarify:
+            clar = (raw_p.clarify_message or "").strip() or "请具体说说忌口、过敏或不想吃的东西。"
+            return ChatOut(reply=clar)
+        if not raw_p.items:
+            return ChatOut(reply="请具体说说忌口、过敏或不想吃的东西。")
+        pdraft = PreferenceConfirmDraft(items=raw_p.items)
+        await chat_pending_service.set_preference_confirm_draft(user_id, pdraft, session)
+        return ChatOut(reply=_build_preference_preview(pdraft))
 
     if routed.intent == ChatRouteIntent.log_burn:
         await chat_pending_service.clear_pending(user_id, session)
