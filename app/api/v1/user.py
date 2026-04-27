@@ -1,6 +1,9 @@
 from fastapi import APIRouter, File, Form, UploadFile
+from loguru import logger
 
 from app.api.deps import CurrentUser, CurrentUserRaw, DbSession
+from app.core.error_code import ErrorCode
+from app.core.exceptions import BusinessException
 from app.core.response import R
 from app.schemas.user import AccountStatusOut, UserRead, UserUpdate
 from app.services import oss_service, user_service
@@ -27,7 +30,13 @@ async def update_user(
     avatar_url: str | None = None
     if avatar is not None:
         data = await avatar.read()
-        avatar_url = oss_service.upload_avatar(data, avatar.content_type or "image/jpeg")
+        logger.info(f"avatar upload: size={len(data)} content_type={avatar.content_type}")
+        try:
+            avatar_url = oss_service.upload_avatar(data, avatar.content_type or "image/jpeg")
+            logger.info(f"avatar uploaded: {avatar_url}")
+        except Exception as e:
+            logger.error(f"OSS upload failed: {e}")
+            raise BusinessException(ErrorCode.INTERNAL_ERROR, f"头像上传失败: {e}")
 
     payload = UserUpdate(nickname=nickname, height=height, weight=weight, age=age, gender=gender)
     user = await user_service.update_user(db, current, payload, avatar_url)

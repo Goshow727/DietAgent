@@ -65,19 +65,12 @@ def _tags_from_row(row: UserInsightSummary) -> list[InsightTag]:
 def _row_to_home(row: UserInsightSummary) -> HomeInsightData:
     t = row.insight_type
     it: str = "month" if t == INSIGHT_MONTH else "week" if t == INSIGHT_WEEK else "daily"
-    if it == "daily":
-        # 统计仍按昨日入库；卡片日期展示用户查看当日（本地）
-        tday = today_local()
-        hint = _label_hint_daily_card()
-        p0, p1 = tday, tday
-    else:
-        hint = _label_hint(row.period_start, row.period_end, it)
-        p0, p1 = row.period_start, row.period_end
+    hint = _label_hint(row.period_start, row.period_end, it)
     return HomeInsightData(
         insight_type=it,  # type: ignore[arg-type]
         period=HomeInsightPeriod(
-            period_start=p0,
-            period_end=p1,
+            period_start=row.period_start,
+            period_end=row.period_end,
             label_hint=hint,
         ),
         desc=row.body,
@@ -90,23 +83,13 @@ def _label_hint(p0: date, p1: date, kind: str) -> str:
         return f"{p0.year} 年 {p0.month} 月总结"
     if kind == "week":
         return f"本周 {p0:%m/%d}–{p1:%m/%d}"
-    return _label_hint_daily_card()
-
-
-def _label_hint_daily_card() -> str:
-    t = today_local()
-    return f"当天 {t.month}/{t.day}"
+    return f"昨日 {p0.month}/{p0.day}"
 
 
 def _static_daily(y: date, desc: str, tags: list[InsightTag] | None = None) -> HomeInsightData:
-    tday = today_local()
     return HomeInsightData(
         insight_type="daily",
-        period=HomeInsightPeriod(
-            period_start=tday,
-            period_end=tday,
-            label_hint=_label_hint_daily_card(),
-        ),
+        period=HomeInsightPeriod(period_start=y, period_end=y, label_hint=_label_hint(y, y, "daily")),
         desc=desc,
         tags=tags or [],
     )

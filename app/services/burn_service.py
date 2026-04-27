@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.error_code import ErrorCode
 from app.core.exceptions import BusinessException
-from app.db.utils import day_range_utc
+from app.db.local_day import local_inclusive_utc_range
 from app.models.burn_log import BurnLog
 from app.schemas.food import BurnLogCreate
 
@@ -26,10 +26,10 @@ async def create_burn(db: AsyncSession, user_id: int, payload: BurnLogCreate) ->
 
 
 async def list_burns(db: AsyncSession, user_id: int, log_date: date) -> list[BurnLog]:
-    start, end = day_range_utc(log_date)
+    start, end = local_inclusive_utc_range(log_date, log_date)
     result = await db.execute(
         select(BurnLog)
-        .where(BurnLog.user_id == user_id, BurnLog.logged_at.between(start, end))
+        .where(BurnLog.user_id == user_id, BurnLog.logged_at >= start, BurnLog.logged_at < end)
         .order_by(BurnLog.logged_at)
     )
     return list(result.scalars().all())
