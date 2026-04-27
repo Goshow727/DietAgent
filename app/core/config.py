@@ -40,8 +40,8 @@ class Settings(BaseSettings):
     ARK_IMAGE_SIZE: str = "1K"
     ARK_IMAGE_URL: str = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
 
-    OSS_ACCESS_KEY_ID: str = "REMOVED_OSS_KEY_ID"
-    OSS_ACCESS_KEY_SECRET: str = "REMOVED_OSS_KEY_SECRET"
+    OSS_ACCESS_KEY_ID: str = ""
+    OSS_ACCESS_KEY_SECRET: str = ""
     OSS_ENDPOINT: str = "oss-cn-guangzhou.aliyuncs.com"
     OSS_BUCKET: str = "test-zsp-oss"
     OSS_BASE_URL: str = "https://test-zsp-oss.oss-cn-guangzhou.aliyuncs.com"
