@@ -5,12 +5,12 @@ Wants=redis.service
 
 [Service]
 Type=simple
-User=ubuntu
-Group=ubuntu
-WorkingDirectory=/home/ubuntu/DietAgent
-EnvironmentFile=/home/ubuntu/DietAgent/.env
+User=root
+Group=root
+WorkingDirectory=/root/DietAgent
+EnvironmentFile=/root/DietAgent/.env
 
-ExecStart=/home/ubuntu/.local/bin/uv run uvicorn app.main:app \
+ExecStart=/root/.local/bin/uv run uvicorn app.main:app \
     --host 0.0.0.0 \
     --port 8000 \
     --workers 2
